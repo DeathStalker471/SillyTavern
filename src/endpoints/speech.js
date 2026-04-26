@@ -174,6 +174,92 @@ pollinations.post('/generate', async (req, res) => {
 
 router.use('/pollinations', pollinations);
 
+const nanogpt = express.Router();
+
+nanogpt.post('/models', async (req, res) => {
+    try {
+        const key = readSecret(req.user.directories, SECRET_KEYS.NANOGPT);
+        if (!key) {
+            console.warn('NanoGPT API key not found');
+            return res.sendStatus(400);
+        }
+
+        const response = await fetch('https://nano-gpt.com/api/v1/audio-models?type=tts', {
+            headers: {
+                'Authorization': `Bearer ${key}`,
+            },
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.warn(`NanoGPT audio models fetch failed: HTTP ${response.status} - ${text}`);
+            return res.sendStatus(500);
+        }
+
+        const responseJson = await response.json();
+        return res.json(responseJson);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+});
+
+nanogpt.post('/synthesize', async (req, res) => {
+    try {
+        const key = readSecret(req.user.directories, SECRET_KEYS.NANOGPT);
+        if (!key) {
+            console.warn('NanoGPT API key not found');
+            return res.sendStatus(400);
+        }
+
+        const { input, model, voice, response_format = 'mp3', speed, instructions } = req.body;
+        if (!input || !model || !voice) {
+            console.warn('NanoGPT synthesis request missing input, model, or voice');
+            return res.sendStatus(400);
+        }
+
+        const request = {
+            model,
+            input,
+            voice,
+            response_format,
+        };
+
+        if (speed !== undefined) {
+            request.speed = speed;
+        }
+
+        if (instructions) {
+            request.instructions = instructions;
+        }
+
+        console.debug('NanoGPT TTS request:', { model, voice, response_format, speed });
+
+        const response = await fetch('https://nano-gpt.com/api/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.warn(`NanoGPT synthesis failed: HTTP ${response.status} - ${text}`);
+            return res.sendStatus(500);
+        }
+
+        res.set('Content-Type', response.headers.get('content-type') || 'audio/mpeg');
+        await forwardFetchResponse(response, res);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+});
+
+router.use('/nanogpt', nanogpt);
+
 const elevenlabs = express.Router();
 
 elevenlabs.post('/voices', async (req, res) => {
