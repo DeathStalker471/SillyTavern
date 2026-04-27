@@ -3648,6 +3648,16 @@
                                     <option value="" data-i18n="-- Connect to the API --">-- Connect to the API --</option>
                                 </select>
                             </div>
+                            <div>
+                                <h4 data-i18n="Model Providers">Model Providers</h4>
+                                <select id="nanogpt_provider">
+                                    <option value="" data-i18n="Default">Default</option>
+                                </select>
+                                <label class="checkbox_label marginTopBot5" for="nanogpt_provider_paygo" title="Force pay-as-you-go routing so provider selection also applies to subscription-covered requests." data-i18n="[title]Force pay-as-you-go routing so provider selection also applies to subscription-covered requests.">
+                                    <input id="nanogpt_provider_paygo" type="checkbox" />
+                                    <span data-i18n="Force pay-as-you-go routing">Force pay-as-you-go routing</span>
+                                </label>
+                            </div>
                         </div>
                         <div id="workers_ai_form" data-source="workers_ai">
                             <h4><a href="https://dash.cloudflare.com/?to=/:account/ai/workers-ai/api-quick-start" target="_blank" rel="noopener noreferrer" data-i18n="Cloudflare Workers AI API Key">Cloudflare Workers AI API Key</a></h4>

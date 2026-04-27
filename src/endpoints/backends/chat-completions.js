@@ -10,6 +10,7 @@ import {
     AZURE_OPENAI_KEYS,
     CHAT_COMPLETION_SOURCES,
     GEMINI_SAFETY,
+    NANOGPT_HEADERS,
     NANOGPT_REASONING_EFFORT_MAP,
     OPENAI_FIXED_REASONING_EFFORT,
     OPENAI_REASONING_EFFORT_MAP,
@@ -2370,7 +2371,11 @@ router.post('/generate', async function (request, response) {
         } else if (request.body.chat_completion_source === CHAT_COMPLETION_SOURCES.NANOGPT) {
             apiUrl = API_NANOGPT;
             apiKey = readSecret(request.user.directories, SECRET_KEYS.NANOGPT, request.body.secret_id);
-            headers = {};
+            const provider = typeof request.body.nanogpt_provider === 'string' ? request.body.nanogpt_provider.trim() : '';
+            headers = {
+                ...(provider ? { [NANOGPT_HEADERS.PROVIDER]: provider } : {}),
+                ...(request.body.nanogpt_provider_paygo ? { [NANOGPT_HEADERS.BILLING_MODE]: NANOGPT_HEADERS.PAYGO_BILLING_MODE } : {}),
+            };
             bodyParams = {};
             if (request.body.enable_web_search && !/:online$/.test(request.body.model)) {
                 request.body.model = `${request.body.model}:online`;

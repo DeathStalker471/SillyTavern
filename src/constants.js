@@ -364,6 +364,12 @@ export const OPENROUTER_HEADERS = {
     'X-Title': 'SillyTavern',
 };
 
+export const NANOGPT_HEADERS = {
+    PROVIDER: 'X-Provider',
+    BILLING_MODE: 'X-Billing-Mode',
+    PAYGO_BILLING_MODE: 'paygo',
+};
+
 export const AIMLAPI_HEADERS = {
     'HTTP-Referer': 'https://sillytavern.app',
     'X-Title': 'SillyTavern',

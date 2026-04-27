@@ -108,6 +108,63 @@ const OPENROUTER_PROVIDERS = [
     'Z.AI',
 ];
 
+/**
+ * List of NanoGPT providers.
+ * @type {{ id: string, label: string }[]}
+ */
+export const NANOGPT_PROVIDERS = [
+    // Providers endpoint: https://nano-gpt.com/api/models/providers
+    { id: 'akash', label: 'Akash' },
+    { id: 'alibaba', label: 'Alibaba' },
+    { id: 'ambient', label: 'Ambient' },
+    { id: 'arliai', label: 'ArliAI' },
+    { id: 'atlascloud', label: 'AtlasCloud' },
+    { id: 'azure', label: 'Azure' },
+    { id: 'awsbedrock', label: 'Amazon Bedrock' },
+    { id: 'baidu', label: 'Baidu' },
+    { id: 'baseten', label: 'BaseTen' },
+    { id: 'cerebras', label: 'Cerebras' },
+    { id: 'chutes', label: 'Chutes' },
+    { id: 'clarifai', label: 'Clarifai' },
+    { id: 'cloudflare', label: 'Cloudflare' },
+    { id: 'crusoe', label: 'Crusoe' },
+    { id: 'dekallm', label: 'DekaLLM' },
+    { id: 'deepinfra', label: 'DeepInfra' },
+    { id: 'deepseek', label: 'DeepSeek' },
+    { id: 'fireworks', label: 'Fireworks' },
+    { id: 'friendli', label: 'Friendli' },
+    { id: 'gmicloud', label: 'GMICloud' },
+    { id: 'lilac', label: 'Lilac' },
+    { id: 'google', label: 'Google' },
+    { id: 'groq', label: 'Groq' },
+    { id: 'hyperbolic', label: 'Hyperbolic' },
+    { id: 'ionet', label: 'Io Net' },
+    { id: 'inceptron', label: 'Inceptron' },
+    { id: 'mancer', label: 'Mancer' },
+    { id: 'mara', label: 'Mara' },
+    { id: 'meganova', label: 'MegaNova' },
+    { id: 'minimax', label: 'MiniMax' },
+    { id: 'modelrun', label: 'ModelRun' },
+    { id: 'moonshot', label: 'Moonshot' },
+    { id: 'morph', label: 'Morph' },
+    { id: 'ncompass', label: 'NCompass' },
+    { id: 'nebius', label: 'Nebius' },
+    { id: 'neuralwatt', label: 'Neuralwatt' },
+    { id: 'nextbit', label: 'NextBit' },
+    { id: 'novita', label: 'Novita' },
+    { id: 'parasail', label: 'Parasail' },
+    { id: 'phala', label: 'Phala' },
+    { id: 'redpill', label: 'Redpill' },
+    { id: 'sambanova', label: 'SambaNova' },
+    { id: 'sambanova-high-throughput', label: 'SambaNova (High Throughput)' },
+    { id: 'siliconflow', label: 'SiliconFlow' },
+    { id: 'streamlake', label: 'StreamLake' },
+    { id: 'tinfoil', label: 'Tinfoil' },
+    { id: 'together', label: 'Together' },
+    { id: 'wandb', label: 'Weights & Biases' },
+    { id: 'zai', label: 'Z.AI' },
+];
+
 const OPENROUTER_PROVIDER_WARNING_SELECTORS = {
     '#openrouter_providers_text': {
         fallbackSelector: '#openrouter_allow_fallbacks_textgenerationwebui',
@@ -184,6 +241,79 @@ export async function syncOpenRouterProvidersForModel(modelId, providersSelector
     } catch (error) {
         console.error('Failed to fetch OpenRouter providers for model', error);
         refreshWarningState();
+    }
+}
+
+export async function syncNanoGptProvidersForModel(modelId, providersSelector) {
+    const $provider = $(providersSelector);
+    const sortProvidersByAvailability = (availableProviders) => {
+        const selectedProvider = String($provider.val() || '');
+        const options = $provider.find('option').toArray();
+        const defaultOption = options.find(option => !option.value);
+        const providerOptions = options.filter(option => option.value);
+
+        providerOptions.sort((a, b) => {
+            const aAvailable = availableProviders.has(a.value);
+            const bAvailable = availableProviders.has(b.value);
+
+            if (aAvailable !== bAvailable) {
+                return aAvailable ? -1 : 1;
+            }
+
+            return a.text.localeCompare(b.text);
+        });
+
+        $provider.empty();
+        if (defaultOption) {
+            $provider.append(defaultOption);
+        }
+        $provider.append(providerOptions);
+        $provider.val(providerOptions.some(option => option.value === selectedProvider) ? selectedProvider : '');
+    };
+
+    if (!modelId || $provider.length === 0) {
+        $provider.find('option').prop('disabled', false);
+        $provider.trigger('change.select2');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/nanogpt/models/providers', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ model: modelId }),
+        });
+
+        if (!response.ok) {
+            $provider.find('option').prop('disabled', false);
+            $provider.trigger('change.select2');
+            return;
+        }
+
+        const data = await response.json();
+        const providers = Array.isArray(data?.providers) ? data.providers : [];
+
+        if (!data?.supportsProviderSelection) {
+            $provider.find('option').each(function () {
+                const value = String($(this).val() || '');
+                $(this).prop('disabled', Boolean(value));
+            });
+            sortProvidersByAvailability(new Set());
+            $provider.trigger('change.select2');
+            return;
+        }
+
+        const availableProviders = new Set(providers.map(provider => String(provider.provider || '')));
+
+        $provider.find('option').each(function () {
+            const value = String($(this).val() || '');
+            $(this).prop('disabled', Boolean(value) && !availableProviders.has(value));
+        });
+
+        sortProvidersByAvailability(availableProviders);
+        $provider.trigger('change.select2');
+    } catch (error) {
+        console.error('Failed to fetch NanoGPT providers for model', error);
     }
 }
 

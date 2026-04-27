@@ -33,6 +33,50 @@ function normalizeUsage(usage) {
     };
 }
 
+/**
+ * Gets NanoGPT auth headers when an API key is configured.
+ * @param {import('express').Request} req Express request.
+ * @returns {Record<string, string>}
+ */
+function getNanoGptHeaders(req) {
+    const key = readSecret(req.user.directories, SECRET_KEYS.NANOGPT);
+    const headers = {
+        'Accept': 'application/json',
+    };
+
+    if (key) {
+        headers['Authorization'] = `Bearer ${key}`;
+    }
+
+    return headers;
+}
+
+/**
+ * Normalizes NanoGPT provider records.
+ * @param {any} data Provider response.
+ * @returns {{ provider: string, available: boolean, pricing: any }[]}
+ */
+function normalizeProviders(data) {
+    const providers = Array.isArray(data) ? data : data?.providers;
+
+    if (!Array.isArray(providers)) {
+        return [];
+    }
+
+    return providers
+        .map(provider => typeof provider === 'string' ? { provider } : provider)
+        .map(provider => ({
+            ...provider,
+            provider: provider?.provider ?? provider?.id,
+        }))
+        .filter(provider => provider.provider)
+        .map(provider => ({
+            provider: String(provider.provider),
+            available: provider.available !== false,
+            pricing: provider.pricing || null,
+        }));
+}
+
 router.post('/credits', async (req, res) => {
     try {
         const key = readSecret(req.user.directories, SECRET_KEYS.NANOGPT);
@@ -95,6 +139,36 @@ router.post('/credits', async (req, res) => {
         }
 
         return res.json(result);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+});
+
+router.post('/models/providers', async (req, res) => {
+    try {
+        const model = String(req.body.model || '').trim();
+
+        if (!model) {
+            return res.status(400).json({ error: 'Model is required' });
+        }
+
+        const response = await fetch(`${API_NANOGPT}/models/${encodeURIComponent(model)}/providers`, {
+            method: 'GET',
+            headers: getNanoGptHeaders(req),
+        });
+
+        if (!response.ok) {
+            return res.json({ supportsProviderSelection: false, providers: [] });
+        }
+
+        /** @type {any} */
+        const data = await response.json();
+
+        return res.json({
+            supportsProviderSelection: Boolean(data?.supportsProviderSelection),
+            providers: normalizeProviders(data),
+        });
     } catch (error) {
         console.error(error);
         return res.sendStatus(500);
